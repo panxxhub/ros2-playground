@@ -1,0 +1,59 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "colcon_build",
+			"detail": "Build workspace",
+			"type": "shell",
+			"command": "./build.sh",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"problemMatcher": "$gcc"
+		},
+		{
+			"label": "colcon_build debug",
+			"detail": "Build workspace",
+			"type": "shell",
+			"command": "./build.sh debug",
+			"group": {
+				"kind": "build",
+				"isDefault": false
+			},
+			"problemMatcher": "$gcc"
+		},
+		{
+			"label": "test",
+			"detail": "Run all unit tests and show results.",
+			"type": "shell",
+			"command": "./test.sh",
+			"group": {
+				"kind": "test",
+				"isDefault": true
+			}
+		},
+		{
+			"label": "colcon_debug_inspect_node",
+			"detail": "Debug workspace",
+			"type": "shell",
+			"command": "./build.sh debug inspect_node",
+			"group": {
+				"kind": "build",
+				"isDefault": false
+			},
+			"problemMatcher": "$gcc"
+		},
+		{
+			"label": "colcon_debug_scara_controller",
+			"detail": "Debug workspace",
+			"type": "shell",
+			"command": "./build.sh debug scara_controller && /bin/bash -c \"source /opt/ros/humble/setup.sh && source ./install/setup.sh && export ROS_DOMAIN_ID=2 && ros2 launch scara_controller scara_controller.launch.py\" ",
+			"group": {
+				"kind": "build",
+				"isDefault": false
+			},
+			"problemMatcher": "$gcc"
+		},
+	]
+}
