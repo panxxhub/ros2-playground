@@ -28,7 +28,7 @@ public:
 
   void send_goal() {
     using namespace std::placeholders;
-    if (!std::atomic_flag_test_and_set(&timer_busy_)) {
+    if (std::atomic_flag_test_and_set(&timer_busy_)) {
       return;
     }
 

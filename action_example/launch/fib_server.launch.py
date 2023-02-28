@@ -11,7 +11,7 @@ def generate_launch_description():
     '''
     fib_server_node = Node(
         package='action_example',
-        executable='fib_server',
+        executable='fib_main',
         output="both",
         arguments=[
             "--ros-args",

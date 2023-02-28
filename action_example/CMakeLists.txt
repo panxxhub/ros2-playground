@@ -24,7 +24,10 @@ endforeach()
 
 add_library(fibonacci_action_components SHARED)
 target_sources(fibonacci_action_components 
-  PRIVATE src/fibonacci_action_server.cpp)
+  PRIVATE 
+    src/fib_server.cpp
+    src/fib_client.cpp
+  )
 target_include_directories(fibonacci_action_components PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
@@ -35,21 +38,20 @@ rclcpp_components_register_nodes(fibonacci_action_components "action_example::Fi
 
 
 
-add_executable(fib_server)
-target_sources(fib_server 
+add_executable(fib_main)
+target_sources(fib_main 
   PRIVATE 
-    src/fib_server.cpp
-    src/fib_client.cpp
+    src/fib_main.cpp
     )
-target_link_libraries(fib_server)
-ament_target_dependencies(fib_server ${THIS_PACKAGE_INCLUDE_DEPENDS})
+target_link_libraries(fib_main)
+ament_target_dependencies(fib_main ${THIS_PACKAGE_INCLUDE_DEPENDS})
 find_package(class_loader REQUIRED)
-target_link_libraries(fib_server
+target_link_libraries(fib_main
   "-Wl,--no-as-needed"
   fibonacci_action_components
   "-Wl,--as-needed"
 )
-ament_target_dependencies(fib_server class_loader)
+ament_target_dependencies(fib_main class_loader)
 
 install(DIRECTORY include/
   DESTINATION include
@@ -63,7 +65,7 @@ install(
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin)
 
-install(TARGETS fib_server
+install(TARGETS fib_main
   DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY
   launch

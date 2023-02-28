@@ -1,48 +1,91 @@
-#include <class_loader/class_loader.hpp>
-#include <cstdio>
-#include <memory>
-#include <rclcpp/executors/multi_threaded_executor.hpp>
-#include <rclcpp/executors/single_threaded_executor.hpp>
+#include "example_interfaces/action/fibonacci.hpp"
 #include <rclcpp/rclcpp.hpp>
-#include <rclcpp/utilities.hpp>
-#include <rclcpp_components/node_factory.hpp>
+#include <rclcpp_action/rclcpp_action.hpp>
 
-namespace {
-#define let const auto
-// constexpr auto ACTION_SERVER_LIB = "";
+namespace action_example {
 
-} // namespace
+class FibonacciActionServer : public rclcpp::Node {
+public:
+  using Fibonacci = example_interfaces::action::Fibonacci;
+  using GoalHandleFibonacci = rclcpp_action::ServerGoalHandle<Fibonacci>;
 
-int main(int argc, char **argv) {
+  explicit FibonacciActionServer(
+      const rclcpp::NodeOptions &options = rclcpp::NodeOptions())
+      : Node("fibonacci_action_server", options) {
+    using namespace std::placeholders;
 
-  rclcpp::init(argc, argv);
-
-  rclcpp::executors::SingleThreadedExecutor executor;
-  let loader = std::make_unique<class_loader::ClassLoader>("");
-  auto classes = loader->getAvailableClasses<rclcpp_components::NodeFactory>();
-
-  rclcpp::Logger logger = rclcpp::get_logger("fib_action_server");
-  RCLCPP_INFO(logger, "hello world action_example package");
-
-  RCLCPP_INFO(logger, "classes.size(): %ld", classes.size());
-  std::vector<rclcpp_components::NodeInstanceWrapper> node_wrappers;
-
-  for (auto &class_name : classes) {
-    // printf("class_name: %s\n", class_name.c_str());
-    RCLCPP_INFO(logger, "class_name: %s", class_name.c_str());
-    let node_factory =
-        loader->createInstance<rclcpp_components::NodeFactory>(class_name);
-    auto wrapper = node_factory->create_node_instance(rclcpp::NodeOptions());
-    let node = wrapper.get_node_base_interface();
-    node_wrappers.emplace_back(std::move(wrapper));
-    executor.add_node(node);
+    this->action_server_ = rclcpp_action::create_server<Fibonacci>(
+        this, "fibonacci",
+        std::bind(&FibonacciActionServer::handle_goal, this, _1, _2),
+        std::bind(&FibonacciActionServer::handle_cancel, this, _1),
+        std::bind(&FibonacciActionServer::handle_accepted, this, _1));
   }
 
-  // load the node( the node is registered through macro)
+private:
+  rclcpp_action::Server<Fibonacci>::SharedPtr action_server_;
 
-  executor.spin();
-  rclcpp::shutdown();
+  rclcpp_action::GoalResponse
+  handle_goal(const rclcpp_action::GoalUUID &uuid,
+              std::shared_ptr<const Fibonacci::Goal> goal) {
+    RCLCPP_INFO(this->get_logger(), "Received goal request with order %d",
+                goal->order);
+    (void)uuid;
+    return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
+  }
 
-  printf("hello world action_example package\n");
-  return 0;
-}
+  rclcpp_action::CancelResponse
+  handle_cancel(const std::shared_ptr<GoalHandleFibonacci> goal_handle) {
+    RCLCPP_INFO(this->get_logger(), "Received request to cancel goal");
+    (void)goal_handle;
+    return rclcpp_action::CancelResponse::ACCEPT;
+  }
+
+  void handle_accepted(const std::shared_ptr<GoalHandleFibonacci> goal_handle) {
+    using namespace std::placeholders;
+    // this needs to return quickly to avoid blocking the executor, so spin up a
+    // new thread
+    std::thread{std::bind(&FibonacciActionServer::execute, this, _1),
+                goal_handle}
+        .detach();
+  }
+
+  void execute(const std::shared_ptr<GoalHandleFibonacci> goal_handle) {
+    RCLCPP_INFO(this->get_logger(), "Executing goal");
+    rclcpp::Rate loop_rate(1);
+    const auto goal = goal_handle->get_goal();
+    auto feedback = std::make_shared<Fibonacci::Feedback>();
+    auto &sequence = feedback->sequence;
+    sequence.push_back(0);
+    sequence.push_back(1);
+    auto result = std::make_shared<Fibonacci::Result>();
+
+    for (int i = 1; (i < goal->order) && rclcpp::ok(); ++i) {
+      // Check if there is a cancel request
+      if (goal_handle->is_canceling()) {
+        result->sequence = sequence;
+        goal_handle->canceled(result);
+        RCLCPP_INFO(this->get_logger(), "Goal canceled");
+        return;
+      }
+      // Update sequence
+      sequence.push_back(sequence[i] + sequence[i - 1]);
+      // Publish feedback
+      goal_handle->publish_feedback(feedback);
+      RCLCPP_INFO(this->get_logger(), "Publish feedback");
+
+      loop_rate.sleep();
+    }
+
+    // Check if goal is done
+    if (rclcpp::ok()) {
+      result->sequence = sequence;
+      goal_handle->succeed(result);
+      RCLCPP_INFO(this->get_logger(), "Goal succeeded");
+    }
+  }
+}; // class FibonacciActionServer
+
+} // namespace action_example
+
+#include <rclcpp_components/register_node_macro.hpp>
+RCLCPP_COMPONENTS_REGISTER_NODE(action_example::FibonacciActionServer)
