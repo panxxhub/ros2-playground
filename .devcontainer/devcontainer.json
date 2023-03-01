@@ -1,0 +1,39 @@
+{
+	"name": "humble-dev",
+	"build": {
+		"dockerfile": "Dockerfile",
+		"args": {
+			"ROS_DISTRO": "rolling"
+		}
+	},
+	"runArgs": [],
+	"settings": {},
+	"extensions": [
+		"llvm-vs-code-extensions.vscode-clangd",
+		"ms-vscode.cpptools-extension-pack",
+		"twxs.cmake",
+		"ms-vscode.cmake-tools",
+		"ms-vscode.makefile-tools",
+		"ms-iot.vscode-ros",
+		"github.copilot",
+		"github.copilot-labs",
+		"visualstudioexptteam.vscodeintellicode",
+		"gruntfuggly.todo-tree",
+		"redhat.vscode-xml",
+		"github.vscode-pull-request-github",
+		"eamodio.gitlens",
+		"felipecaputo.git-project-manager",
+		"streetsidesoftware.code-spell-checker",
+		"ms-azuretools.vscode-docker",
+		"redhat.vscode-yaml",
+		"go2sh.cmake-integration-vscode",
+		"cheshirekow.cmake-format",
+		"josetr.cmake-language-support-vscode",
+		"cschlosser.doxdocgen",
+		"qwtel.sqlite-viewer"
+	],
+	"remoteUser": "root",
+	"remoteEnv": {
+		"ROS_DISTRO": "rolling"
+	}
+}

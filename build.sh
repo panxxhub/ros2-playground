@@ -1,6 +1,6 @@
 #!/bin/sh
 
-. /opt/ros/humble/setup.sh
+. /opt/ros/${ROS_DISTRO}/setup.sh
 
 # get build type from command line
 BUILD_TYPE=$1

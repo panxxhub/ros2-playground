@@ -20,5 +20,6 @@ def generate_launch_description():
                                "--log-level",
                                "minimal_action_client:=DEBUG",
                            ],
-                           prefix=["gdbserver localhost:12034"])
+                        #    prefix=["gdbserver localhost:12034"]
+                           )
     return LaunchDescription([fib_server_node])

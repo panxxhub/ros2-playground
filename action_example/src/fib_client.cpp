@@ -41,10 +41,12 @@ public:
     if (std::atomic_flag_test_and_set(&timer_busy_)) {
       return;
     }
+
     if (!goal_handle_futures_.empty()) {
       goal_handle_futures_.pop_back();
-      return;
     }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1200));
 
     this->goal_done_ = false;
 
@@ -60,7 +62,7 @@ public:
     }
 
     auto goal_msg = Fibonacci::Goal();
-    goal_msg.order = 10;
+    goal_msg.order = 5;
 
     RCLCPP_INFO(this->get_logger(), "Sending goal");
 
