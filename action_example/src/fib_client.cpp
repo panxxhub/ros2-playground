@@ -1,8 +1,16 @@
 #include <atomic>
 #include <cinttypes>
 #include <example_interfaces/action/fibonacci.hpp>
+#include <future>
 #include <rclcpp/rclcpp.hpp>
+#include <rclcpp_action/client_goal_handle.hpp>
 #include <rclcpp_action/rclcpp_action.hpp>
+#include <rclcpp_action/types.hpp>
+#include <vector>
+namespace {
+#define let const auto
+
+} // namespace
 
 namespace action_example {
 
@@ -19,6 +27,8 @@ public:
         this->get_node_logging_interface(),
         this->get_node_waitables_interface(), "fibonacci");
 
+    client_ptr_->wait_for_action_server();
+
     this->timer_ = this->create_wall_timer(
         std::chrono::milliseconds(500),
         std::bind(&MinimalActionClient::send_goal, this));
@@ -31,8 +41,10 @@ public:
     if (std::atomic_flag_test_and_set(&timer_busy_)) {
       return;
     }
-
-    //     this->timer_->cancel();
+    if (!goal_handle_futures_.empty()) {
+      goal_handle_futures_.pop_back();
+      return;
+    }
 
     this->goal_done_ = false;
 
@@ -62,10 +74,15 @@ public:
         std::bind(&MinimalActionClient::result_callback, this, _1);
     auto goal_handle_future =
         this->client_ptr_->async_send_goal(goal_msg, send_goal_options);
+
+    goal_handle_futures_.emplace_back(std::move(goal_handle_future));
   }
 
 private:
+  using GoalFuture = std::shared_future<std::shared_ptr<
+      rclcpp_action::ClientGoalHandle<example_interfaces::action::Fibonacci>>>;
   rclcpp_action::Client<Fibonacci>::SharedPtr client_ptr_;
+  std::vector<GoalFuture> goal_handle_futures_;
   rclcpp::TimerBase::SharedPtr timer_;
   std::atomic_flag timer_busy_ = false;
   bool goal_done_;
@@ -91,7 +108,6 @@ private:
     this->goal_done_ = true;
     switch (result.code) {
     case rclcpp_action::ResultCode::SUCCEEDED:
-      std::atomic_flag_clear(&timer_busy_);
       break;
     case rclcpp_action::ResultCode::ABORTED:
       RCLCPP_ERROR(this->get_logger(), "Goal was aborted");
@@ -108,6 +124,8 @@ private:
     for (auto number : result.result->sequence) {
       RCLCPP_INFO(this->get_logger(), "%" PRId32, number);
     }
+
+    std::atomic_flag_clear(&timer_busy_);
   }
 }; // class MinimalActionClient
 } // namespace action_example

@@ -7,10 +7,11 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
-set (THIS_PACKAGE_INCLUDE_DEPENDS
+set(THIS_PACKAGE_INCLUDE_DEPENDS
   rclcpp
   rclcpp_action
   rclcpp_components
@@ -21,45 +22,44 @@ foreach(dependency ${THIS_PACKAGE_INCLUDE_DEPENDS})
   find_package(${dependency} REQUIRED)
 endforeach()
 
-
-add_library(fibonacci_action_components SHARED)
-target_sources(fibonacci_action_components 
-  PRIVATE 
-    src/fib_server.cpp
-    src/fib_client.cpp
-  )
-target_include_directories(fibonacci_action_components PUBLIC
+add_library(fib_components SHARED)
+target_sources(fib_components
+  PRIVATE
+  src/fib_server.cpp
+  src/fib_client.cpp
+)
+target_include_directories(fib_components PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-target_compile_features(fibonacci_action_components PUBLIC c_std_11 cxx_std_20)  # Require C99 and C++17
-ament_target_dependencies(fibonacci_action_components ${THIS_PACKAGE_INCLUDE_DEPENDS})
+target_compile_features(fib_components PUBLIC c_std_11 cxx_std_20) # Require C99 and C++17
+ament_target_dependencies(fib_components ${THIS_PACKAGE_INCLUDE_DEPENDS})
 
-rclcpp_components_register_nodes(fibonacci_action_components "action_example::FibonacciActionServer")
-
-
+rclcpp_components_register_nodes(fib_components
+  "action_example::MinimalActionServer"
+  "action_example::MinimalActionClient"
+)
 
 add_executable(fib_main)
-target_sources(fib_main 
-  PRIVATE 
-    src/fib_main.cpp
-    )
+target_sources(fib_main
+  PRIVATE
+  src/fib_main.cpp
+)
 target_link_libraries(fib_main)
 ament_target_dependencies(fib_main ${THIS_PACKAGE_INCLUDE_DEPENDS})
 find_package(class_loader REQUIRED)
 target_link_libraries(fib_main
   "-Wl,--no-as-needed"
-  fibonacci_action_components
+  fib_components
   "-Wl,--as-needed"
 )
 ament_target_dependencies(fib_main class_loader)
 
-install(DIRECTORY include/
-  DESTINATION include
-)
-
+# install(DIRECTORY include/
+# DESTINATION include
+# )
 install(
-  TARGETS 
-    fibonacci_action_components
+  TARGETS
+  fib_components
   EXPORT export_${PROJECT_NAME}
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
@@ -74,9 +74,11 @@ install(DIRECTORY
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
+
   # the following line skips the linter which checks for copyrights
   # comment the line when a copyright and license is added to all source files
   set(ament_cmake_copyright_FOUND TRUE)
+
   # the following line skips cpplint (only works in a git repo)
   # comment the line when this package is in a git repo and when
   # a copyright and license is added to all source files

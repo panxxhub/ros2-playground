@@ -1,24 +1,30 @@
 #include "example_interfaces/action/fibonacci.hpp"
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_action/rclcpp_action.hpp>
+namespace {
+#define let const auto
+#define let_mut auto
+
+} // namespace
 
 namespace action_example {
-
-class FibonacciActionServer : public rclcpp::Node {
+class MinimalActionServer : public rclcpp::Node {
 public:
   using Fibonacci = example_interfaces::action::Fibonacci;
   using GoalHandleFibonacci = rclcpp_action::ServerGoalHandle<Fibonacci>;
 
-  explicit FibonacciActionServer(
+  explicit MinimalActionServer(
       const rclcpp::NodeOptions &options = rclcpp::NodeOptions())
-      : Node("fibonacci_action_server", options) {
+      : Node("minimal_action_server", options) {
     using namespace std::placeholders;
 
     this->action_server_ = rclcpp_action::create_server<Fibonacci>(
-        this, "fibonacci",
-        std::bind(&FibonacciActionServer::handle_goal, this, _1, _2),
-        std::bind(&FibonacciActionServer::handle_cancel, this, _1),
-        std::bind(&FibonacciActionServer::handle_accepted, this, _1));
+        this->get_node_base_interface(), this->get_node_clock_interface(),
+        this->get_node_logging_interface(),
+        this->get_node_waitables_interface(), "fibonacci",
+        std::bind(&MinimalActionServer::handle_goal, this, _1, _2),
+        std::bind(&MinimalActionServer::handle_cancel, this, _1),
+        std::bind(&MinimalActionServer::handle_accepted, this, _1));
   }
 
 private:
@@ -30,6 +36,10 @@ private:
     RCLCPP_INFO(this->get_logger(), "Received goal request with order %d",
                 goal->order);
     (void)uuid;
+    // Let's reject sequences that are over 9000
+    if (goal->order > 9000) {
+      return rclcpp_action::GoalResponse::REJECT;
+    }
     return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
   }
 
@@ -38,15 +48,6 @@ private:
     RCLCPP_INFO(this->get_logger(), "Received request to cancel goal");
     (void)goal_handle;
     return rclcpp_action::CancelResponse::ACCEPT;
-  }
-
-  void handle_accepted(const std::shared_ptr<GoalHandleFibonacci> goal_handle) {
-    using namespace std::placeholders;
-    // this needs to return quickly to avoid blocking the executor, so spin up a
-    // new thread
-    std::thread{std::bind(&FibonacciActionServer::execute, this, _1),
-                goal_handle}
-        .detach();
   }
 
   void execute(const std::shared_ptr<GoalHandleFibonacci> goal_handle) {
@@ -64,14 +65,14 @@ private:
       if (goal_handle->is_canceling()) {
         result->sequence = sequence;
         goal_handle->canceled(result);
-        RCLCPP_INFO(this->get_logger(), "Goal canceled");
+        RCLCPP_INFO(this->get_logger(), "Goal Canceled");
         return;
       }
       // Update sequence
       sequence.push_back(sequence[i] + sequence[i - 1]);
       // Publish feedback
       goal_handle->publish_feedback(feedback);
-      RCLCPP_INFO(this->get_logger(), "Publish feedback");
+      RCLCPP_INFO(this->get_logger(), "Publish Feedback");
 
       loop_rate.sleep();
     }
@@ -80,12 +81,22 @@ private:
     if (rclcpp::ok()) {
       result->sequence = sequence;
       goal_handle->succeed(result);
-      RCLCPP_INFO(this->get_logger(), "Goal succeeded");
+      // goal_handle->reset();
+      RCLCPP_INFO(this->get_logger(), "Goal Succeeded");
     }
   }
-}; // class FibonacciActionServer
+
+  void handle_accepted(const std::shared_ptr<GoalHandleFibonacci> goal_handle) {
+    using namespace std::placeholders;
+    // this needs to return quickly to avoid blocking the executor, so spin up a
+    // new thread
+    let_mut t = std::jthread{std::bind(&MinimalActionServer::execute, this, _1),
+                             goal_handle};
+    t.detach();
+  }
+}; // class MinimalActionServer
 
 } // namespace action_example
 
 #include <rclcpp_components/register_node_macro.hpp>
-RCLCPP_COMPONENTS_REGISTER_NODE(action_example::FibonacciActionServer)
+RCLCPP_COMPONENTS_REGISTER_NODE(action_example::MinimalActionServer)

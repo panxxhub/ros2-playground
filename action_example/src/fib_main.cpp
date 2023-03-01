@@ -9,6 +9,7 @@
 
 namespace {
 #define let const auto
+#define let_mut auto
 // constexpr auto ACTION_SERVER_LIB = "";
 
 } // namespace
@@ -19,19 +20,24 @@ int main(int argc, char **argv) {
 
   rclcpp::executors::MultiThreadedExecutor executor;
   let loader = std::make_unique<class_loader::ClassLoader>("");
-  auto classes = loader->getAvailableClasses<rclcpp_components::NodeFactory>();
+  let classes = loader->getAvailableClasses<rclcpp_components::NodeFactory>();
 
   rclcpp::Logger logger = rclcpp::get_logger("fib_action_server");
   RCLCPP_INFO(logger, "hello world action_example package");
 
   RCLCPP_INFO(logger, "classes.size(): %ld", classes.size());
   std::vector<rclcpp_components::NodeInstanceWrapper> node_wrappers;
+  node_wrappers.reserve(classes.size());
+  // reverse iter the order of the classes
+  let classes_rbegin = classes.rbegin();
+  let classes_rend = classes.rend();
 
-  for (auto &class_name : classes) {
+  for (let_mut it = classes_rbegin; it != classes_rend; ++it) {
+
     // printf("class_name: %s\n", class_name.c_str());
-    RCLCPP_INFO(logger, "class_name: %s", class_name.c_str());
+    RCLCPP_INFO(logger, "class_name: %s", it->c_str());
     let node_factory =
-        loader->createInstance<rclcpp_components::NodeFactory>(class_name);
+        loader->createInstance<rclcpp_components::NodeFactory>(*it);
     auto wrapper = node_factory->create_node_instance(rclcpp::NodeOptions());
     let node = wrapper.get_node_base_interface();
     node_wrappers.emplace_back(std::move(wrapper));
