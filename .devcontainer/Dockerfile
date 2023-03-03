@@ -1,5 +1,5 @@
-ARG ROS_DISTRO=rolling
-FROM ros:${ROS_DISTRO}-ros-core-jammy
+ARG ROS_DISTRO=galactic
+FROM ros:${ROS_DISTRO}-ros-core
 
 ENV http_proxy   "http://proxy.cohort-study.com:43890"
 ENV https_proxy  "http://proxy.cohort-study.com:43890"
@@ -19,16 +19,18 @@ RUN apt-get update -q && \
 	apt-get install -y \
 	clang-15 clang-tools-15 clang-15-doc libclang-common-15-dev libclang-15-dev libclang1-15 clang-format-15 python3-clang-15 clangd-15 clang-tidy-15 \
 	libc++-15-dev libc++abi-15-dev
-RUN apt-get install -y ccache ninja-build cmake vim git 
+RUN apt-get install -y ccache ninja-build cmake vim git gdb gdbserver
+
+# if distro is galactic, dont install generate-parameter-library
 
 
 RUN apt-get install -y \
 	ros-${ROS_DISTRO}-ros-base \
-	ros-${ROS_DISTRO}-generate-parameter-library \
 	ros-${ROS_DISTRO}-control-msgs \
 	ros-${ROS_DISTRO}-controller-interface \
 	ros-${ROS_DISTRO}-realtime-tools \
-	ros-${ROS_DISTRO}-controller-manager-msgs
+	ros-${ROS_DISTRO}-controller-manager-msgs \
+	ros-${ROS_DISTRO}-example-interfaces
 
 RUN apt-get install -y \
 	python3-pip python3-vcstool python3-colcon-common-extensions

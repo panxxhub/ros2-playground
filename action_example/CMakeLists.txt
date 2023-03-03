@@ -54,6 +54,27 @@ target_link_libraries(fib_main
 )
 ament_target_dependencies(fib_main class_loader)
 
+add_executable(minimal_client)
+target_sources(minimal_client
+  PRIVATE
+    src/minimal_client.cpp
+)
+target_include_directories(minimal_client PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+ament_target_dependencies(minimal_client ${THIS_PACKAGE_INCLUDE_DEPENDS})
+add_executable(minimal_server)
+target_sources(minimal_server
+  PRIVATE
+    src/minimal_server.cpp
+)
+target_include_directories(minimal_server PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+ament_target_dependencies(minimal_server ${THIS_PACKAGE_INCLUDE_DEPENDS})
+
+
+
 # install(DIRECTORY include/
 # DESTINATION include
 # )
@@ -65,7 +86,11 @@ install(
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin)
 
-install(TARGETS fib_main
+install(
+  TARGETS 
+    fib_main 
+    minimal_client
+    minimal_server
   DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY
   launch

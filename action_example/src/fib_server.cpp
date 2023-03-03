@@ -1,10 +1,34 @@
 #include "example_interfaces/action/fibonacci.hpp"
+#include <rcl_action/action_server.h>
+#include <rcl_action/default_qos.h>
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp_action/rclcpp_action.hpp>
+#include <rmw/qos_profiles.h>
 namespace {
 #define let const auto
 #define let_mut auto
+// calls
+/**
+ * The defaults are:
+ *
+ * - goal_service_qos = rmw_qos_profile_services_default;
+ * - cancel_service_qos = rmw_qos_profile_services_default;
+ * - result_service_qos = rmw_qos_profile_services_default;
+ * - feedback_topic_qos = rmw_qos_profile_default;
+ * - status_topic_qos = rcl_action_qos_profile_status_default;
+ * - allocator = rcl_get_default_allocator();
+ * - result_timeout = RCUTILS_S_TO_NS(15 * 60);  // 15 minutes
+ */
 
+// const rcl_action_server_options_t rmw_qos_profile_actions = {
+//     .goal_service_qos = rmw_qos_profile_services_default,
+//     .cancel_service_qos = rmw_qos_profile_services_default,
+//     .result_service_qos = rmw_qos_profile_services_default,
+//     .feedback_topic_qos = rmw_qos_profile_sensor_data,
+//     .status_topic_qos = rcl_action_qos_profile_status_default,
+//     .allocator = rcl_get_default_allocator(),
+//     .result_timeout = RCL_S_TO_NS(15 * 60),
+// };
 } // namespace
 
 namespace action_example {
@@ -18,13 +42,17 @@ public:
       : Node("minimal_action_server", options) {
     using namespace std::placeholders;
 
+    let qos_option = rcl_action_server_get_default_options();
+
     this->action_server_ = rclcpp_action::create_server<Fibonacci>(
         this->get_node_base_interface(), this->get_node_clock_interface(),
         this->get_node_logging_interface(),
         this->get_node_waitables_interface(), "fibonacci",
         std::bind(&MinimalActionServer::handle_goal, this, _1, _2),
         std::bind(&MinimalActionServer::handle_cancel, this, _1),
-        std::bind(&MinimalActionServer::handle_accepted, this, _1));
+        std::bind(&MinimalActionServer::handle_accepted, this, _1), qos_option
+        // rmw_qos_profile_services_hist_keep_all
+    );
   }
 
 private:
@@ -90,8 +118,8 @@ private:
     using namespace std::placeholders;
     // this needs to return quickly to avoid blocking the executor, so spin up a
     // new thread
-    let_mut t = std::jthread{std::bind(&MinimalActionServer::execute, this, _1),
-                             goal_handle};
+    let_mut t = std::thread{std::bind(&MinimalActionServer::execute, this, _1),
+                            goal_handle};
     t.detach();
   }
 }; // class MinimalActionServer

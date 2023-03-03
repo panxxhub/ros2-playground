@@ -2,13 +2,18 @@
 #include <cinttypes>
 #include <example_interfaces/action/fibonacci.hpp>
 #include <future>
+#include <queue>
+#include <rcl_action/action_client.h>
+#include <rclcpp/executors.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <rclcpp/wait_set.hpp>
 #include <rclcpp_action/client_goal_handle.hpp>
 #include <rclcpp_action/rclcpp_action.hpp>
 #include <rclcpp_action/types.hpp>
-#include <vector>
+#include <rmw/qos_profiles.h>
 namespace {
 #define let const auto
+#define let_mut auto
 
 } // namespace
 
@@ -22,12 +27,13 @@ public:
   explicit MinimalActionClient(
       const rclcpp::NodeOptions &node_options = rclcpp::NodeOptions())
       : Node("minimal_action_client", node_options), goal_done_(false) {
+
+    let qos_option = rcl_action_client_get_default_options();
+
     this->client_ptr_ = rclcpp_action::create_client<Fibonacci>(
         this->get_node_base_interface(), this->get_node_graph_interface(),
         this->get_node_logging_interface(),
-        this->get_node_waitables_interface(), "fibonacci");
-
-    client_ptr_->wait_for_action_server();
+        this->get_node_waitables_interface(), "fibonacci", nullptr, qos_option);
 
     this->timer_ = this->create_wall_timer(
         std::chrono::milliseconds(500),
@@ -38,12 +44,25 @@ public:
 
   void send_goal() {
     using namespace std::placeholders;
-    if (std::atomic_flag_test_and_set(&timer_busy_)) {
+    if (std::atomic_flag_test_and_set(&remote_busy_)) {
       return;
     }
 
     if (!goal_handle_futures_.empty()) {
-      goal_handle_futures_.pop_back();
+      let &future = goal_handle_futures_.front();
+      using namespace std::chrono_literals;
+
+      // let ret_code = rclcpp::spin_until_future_complete(
+      //     this->get_node_base_interface(), future, 100ms);
+      let ret_code = future.wait_for(100ms);
+      if (ret_code == std::future_status::ready) {
+        goal_handle_futures_.pop();
+      } else if (ret_code == std::future_status::timeout) {
+        std::atomic_flag_clear(&remote_busy_);
+        return;
+      } else {
+        throw std::runtime_error("Unexpected future return code");
+      }
     }
 
     std::this_thread::sleep_for(std::chrono::milliseconds(1200));
@@ -77,16 +96,16 @@ public:
     auto goal_handle_future =
         this->client_ptr_->async_send_goal(goal_msg, send_goal_options);
 
-    goal_handle_futures_.emplace_back(std::move(goal_handle_future));
+    goal_handle_futures_.emplace(std::move(goal_handle_future));
   }
 
 private:
   using GoalFuture = std::shared_future<std::shared_ptr<
       rclcpp_action::ClientGoalHandle<example_interfaces::action::Fibonacci>>>;
   rclcpp_action::Client<Fibonacci>::SharedPtr client_ptr_;
-  std::vector<GoalFuture> goal_handle_futures_;
+  std::queue<GoalFuture> goal_handle_futures_;
   rclcpp::TimerBase::SharedPtr timer_;
-  std::atomic_flag timer_busy_ = false;
+  std::atomic_flag remote_busy_ = false;
   bool goal_done_;
 
   void goal_response_callback(GoalHandleFibonacci::SharedPtr goal_handle) {
@@ -127,7 +146,7 @@ private:
       RCLCPP_INFO(this->get_logger(), "%" PRId32, number);
     }
 
-    std::atomic_flag_clear(&timer_busy_);
+    std::atomic_flag_clear(&remote_busy_);
   }
 }; // class MinimalActionClient
 } // namespace action_example

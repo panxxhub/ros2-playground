@@ -1,5 +1,10 @@
 #!/bin/sh
 
+# check if ROS_DISTRO is set, if not, set it to 'humble'
+if [ -z "$ROS_DISTRO" ]; then
+	export ROS_DISTRO=humble
+fi
+
 . /opt/ros/${ROS_DISTRO}/setup.sh
 
 # get build type from command line
